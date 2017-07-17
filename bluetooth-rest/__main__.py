@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import sys
 import bluetooth
 from threading import Thread
@@ -27,21 +27,23 @@ def scan_for_device(device_address):
 
 @app.route('/start-beacon', methods=['POST'])
 def begin_beacon():
-    device_id = request.args.get('device_id')
-    major = request.args.get('major') 
-    minor = request.args.get('minor')
-    uuid = request.args.get('uuid')
-    tx_power = request.args.get('tx_power')
-    interval = request.args.get('interval')
-
-    service = BeaconService(device_id)
 
     try:
+        device_id = str(request.args.get('device_id'))
+        major = int(request.args.get('major'))
+        minor = int(request.args.get('minor'))
+        uuid = str(request.args.get('uuid'))
+        tx_power = int(request.args.get('tx_power'))
+        interval = int(request.args.get('interval'))
+
+        service = BeaconService(device_id)
+        
         thread = Thread(target = service.start_advertising, args = (uuid, major, minor, tx_power, interval))
         thread.start()
 
         return jsonify({"is_started": True})
-    except:
+    except Exception as e:
+        print(e)
         return jsonify({"is_started": False})
 
 if __name__ == "__main__":
