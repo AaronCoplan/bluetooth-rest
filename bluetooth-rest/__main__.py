@@ -1,50 +1,77 @@
 from flask import Flask, jsonify, request
 import sys
-import bluetooth
-from threading import Thread
-from gattlib import BeaconService
+import bt
+import beacon
 
 app = Flask(__name__)
 
 @app.route('/status', methods=['GET'])
 def status():
-    return jsonify({"status": "running"})
+    return jsonify({"is_running": True})
 
-@app.route('/simple-scan', methods=['GET'])
+@app.route('/scan-for/any', methods=['GET'])
 def simple_scan():
-    return jsonify(bluetooth.discover_devices())
+    return jsonify(bt.simple_scan())
 
 @app.route('/scan-for/<string:device_address>', methods=['GET'])
 def scan_for_device(device_address):
-    if(not(bluetooth.is_valid_address(device_address))):
-        return jsonify({"is_present": False})
-
-    name = bluetooth.lookup_name(device_address, timeout=4)
-    if(name is None):
-        return jsonify({"is_present": False})
-    else:
-        return jsonify({"is_present": True})
-
-@app.route('/start-beacon', methods=['POST'])
-def begin_beacon():
+    timeout = 4
 
     try:
-        device_id = str(request.args.get('device_id'))
-        major = int(request.args.get('major'))
-        minor = int(request.args.get('minor'))
-        uuid = str(request.args.get('uuid'))
-        tx_power = int(request.args.get('tx_power'))
-        interval = int(request.args.get('interval'))
-
-        service = BeaconService(device_id)
+        timeout = int(request.args.get('timeout'))
+    except:
+        pass
         
-        thread = Thread(target = service.start_advertising, args = (uuid, major, minor, tx_power, interval))
-        thread.start()
+    return jsonify({
+        "is_present": bt.is_device_present(device_address, timeout)
+    })
 
-        return jsonify({"is_started": True})
-    except Exception as e:
-        print(e)
-        return jsonify({"is_started": False})
+@app.route('/beacon/status', methods=['GET'])
+def get_beacon_status():
+    return jsonify({
+        "is_running": beacon.is_running()
+    })
+
+@app.route('/beacon/stop', methods=['POST'])
+def stop_beacon():
+    try:
+        device_name = request.args.get('device_name')
+        if(device_name is None):
+            raise Exception()
+        else:
+            device_name = str(device_name)
+    except:
+        return jsonify({
+            "is_stopped": False
+        })
+    
+    stopped_successfully = beacon.stop(device_name)
+    return jsonify({
+        "is_stopped": stopped_successfully
+    })
+    
+@app.route('/beacon/start', methods=['POST'])
+def start_beacon():
+
+    try:
+        beacon_params = {
+            "device_id": str(request.args.get('device_id')),
+            "major": int(request.args.get('major')),
+            "minor": int(request.args.get('minor')),
+            "uuid": str(request.args.get('uuid')),
+            "tx_power": int(request.args.get('tx_power')),
+            "interval": int(request.args.get('interval')),
+        }
+    except:
+        return jsonify({
+            "is_started": False
+        })
+
+    started_successfully = beacon.start(beacon_params);
+
+    return jsonify({
+        "is_started": started_successfully
+    })
 
 if __name__ == "__main__":
     if(len(sys.argv) != 3):
