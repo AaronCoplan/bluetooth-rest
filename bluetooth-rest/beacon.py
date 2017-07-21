@@ -23,15 +23,23 @@ def start(beacondata):
         return False
 
 def stop(devicename):
+    global data
+    
     if data is not None:
         data['service'].stop_advertising()
         data['thread'].join(timeout=6)
 
-        return not(data['thread'].is_alive())
+        thread = data['thread']
+
+        if(not(thread.is_alive())):
+            data = None
+            return True
+        else:
+            return False
 
     else:
         # look to make sure it's not already running
-
+        
         try:
             service = BeaconService(devicename)
             service.stop_advertising()
